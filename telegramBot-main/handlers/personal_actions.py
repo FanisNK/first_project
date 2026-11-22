@@ -1,11 +1,13 @@
 import structlog
 from aiogram import Router, F, Bot
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, CommandStart, CommandObject
-from aiogram.types import Message, LabeledPrice, PreCheckoutQuery, InlineKeyboardMarkup, CallbackQuery
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
+from aiogram.filters import Command, CommandObject
+from aiogram.types import Message, LabeledPrice, PreCheckoutQuery, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from fluent.runtime import FluentLocalization
+
+from filters.is_owner import IsOwnerFilter
 
 # Declare router
 router = Router()
@@ -15,8 +17,8 @@ router.message.filter(F.chat.type == "private")
 logger = structlog.get_logger()
 
 # Declare handlers
-@router.message(Command("start"))
-async def cmd_owner_hello(message: Message, l10n: FluentLocalization):
+@router.message(Command("start"), IsOwnerFilter(is_owner=False))
+async def cmd_user_hello(message: Message, l10n: FluentLocalization):
     await message.answer(l10n.format_value("hello-msg"))
 
 
@@ -122,6 +124,10 @@ async def cmd_refund(message: Message, bot: Bot, command: CommandObject, l10n: F
 
         await message.answer(err_text)
         return
+    except TelegramAPIError:
+        logger.exception("Telegram API error while refunding Stars")
+        await message.answer(l10n.format_value("donate-refund-api-error"))
+        return
 
 
 @router.pre_checkout_query()
@@ -132,7 +138,23 @@ async def pre_checkout_query(query: PreCheckoutQuery, l10n: FluentLocalization):
     # тут можно/нужно проверить доступность товара/услуги, прямо перед оплатой
     # ..
     # так как у нас просто донат, мы просто всегда отвечаем положительно
-    await query.answer(ok=True)
+    payment_payload = query.invoice_payload
+    try:
+        expected_amount = int(payment_payload.removesuffix("_stars"))
+    except (ValueError, AttributeError):
+        expected_amount = 0
+
+    is_valid_payment = (
+        payment_payload.endswith("_stars")
+        and 1 <= expected_amount <= 2500
+        and query.currency == "XTR"
+        and query.total_amount == expected_amount
+    )
+
+    await query.answer(
+        ok=is_valid_payment,
+        error_message=None if is_valid_payment else l10n.format_value("donate-precheckout-error"),
+    )
 
     # либо вот так, если по какой-то причине надо отказать в проведении платежа
     #await query.answer(

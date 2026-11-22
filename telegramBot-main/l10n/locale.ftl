@@ -76,3 +76,6 @@ ping-msg =
 
 media-msg =
     <b>🫡 Nice media <i>(I guess)</i>!</b>
+
+donate-precheckout-error = Не удалось подтвердить платеж. Проверьте сумму и валюту платежа.
+donate-refund-api-error = Не удалось выполнить возврат из-за ошибки Telegram. Попробуйте позже.

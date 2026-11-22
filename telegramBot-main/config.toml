@@ -1,6 +1,6 @@
 [bot]
 # Bot token
-token = "<your-token-goes-here>"
+token = "YOUR_TELEGRAM_BOT_TOKEN"
 
 # Bot owners
 owners = []

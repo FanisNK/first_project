@@ -1,6 +1,7 @@
 from enum import StrEnum, auto
 from functools import lru_cache
 from os import environ
+from pathlib import Path
 from tomllib import load
 from typing import Type, TypeVar
 
@@ -16,7 +17,7 @@ class LogRenderer(StrEnum):
 
 class BotConfig(BaseModel):
     token: SecretStr
-    owners: list
+    owners: list[int]
 
 
 class LogConfig(BaseModel):
@@ -43,7 +44,7 @@ def parse_config_file() -> dict:
     if environ.get('CONFIG_FILE_PATH') is not None:
         file_path = environ.get('CONFIG_FILE_PATH') # overriden config file name
     else:
-        file_path = "config.toml" # default config file name
+        file_path = Path(__file__).resolve().parent / "config.toml" # default config file
 
     if file_path is None:
         error = "Could not find settings file"
